@@ -73,7 +73,19 @@ done
 
 relativePath=`realpath --relative-to="." "$filePath"` || exit -1
 
-git add "$relativePath"
 commitMsg="updating config $fileName ${@:2}"
+git add "$relativePath"
+if [ -n "$?" ]; then
+	echo "git add failed. check config file, then add,commit and push yourself"
+	exit -1
+fi
 git commit -m"$commitMsg"
+if [ -n "$?" ]; then
+	echo "git commit failed. check config file, then add,commit and push yourself"
+	exit -1
+fi
 git push	
+if [ -n "$?" ]; then
+	echo "git push failed. check config file, then add,commit and push yourself"
+	exit -1
+fi
