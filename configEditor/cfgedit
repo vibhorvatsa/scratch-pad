@@ -1,0 +1,78 @@
+#!/bin/bash
+
+function tokenizeKeyValue() {
+	local keyValue=$1
+	if [ -z "$keyValue" ]; then
+		>&2 echo "No keyValue passed. Exit"
+		exit -1
+	fi
+	local key=`echo $keyValue | awk -F"=" '{print $1}'`
+	local value=`echo $keyValue | awk -F"=" '{print $2}'`
+	if [ "$key" == "$keyValue" ]; then
+		>&2 echo "Invalid Key Value pair. Valid form key=value. no space"
+		exit -1
+	fi
+
+	if [ "$2" == "key" ]; then
+		echo "$key"
+	elif [ "$2" == "value" ]; then
+		echo "$value"
+	fi
+}
+
+function tokenizeKey() {
+	tokenizeKeyValue "$1" key
+}
+
+function tokenizeValue() {
+	tokenizeKeyValue "$1" value
+}
+
+# This function currently can not handle config file with multiple sections
+# Ignores keys that don't exist in the config. Does NOT add new keys
+function updateConfigValue {
+	local filePath=$1
+	local key=$2
+	local value=$3
+	if [ -z "$key" ]; then
+		echo "No key provided. Exit"
+		exit -1
+	fi
+	if [ ! -f "$filePath" ]; then
+		echo "filePath is invalid. Exit"
+		exit -1
+	fi
+	sed -i "s/^$key[ \t]*=.*/$key=$value/" $filePath
+}
+
+function validateKeyValuePairs() {
+	for keyValue1 in "$@"; do
+		echo "$keyValue1"
+		local key=`echo $keyValue1 | awk -F"=" '{print $1}'`
+		if [ "$key" == "$keyValue1" ]; then
+			>&2 echo "Invalid Key Value pair. Valid form key=value. no space"
+			exit -1
+		fi
+	done
+}
+
+filePath=$1
+if [ ! -f "$filePath" ]; then
+	echo "filePath is invalid. Exit"
+	exit -1
+fi
+fileName=`echo $filePath | awk -F'/' '{print $NF}'`
+
+validateKeyValuePairs "${@:2}"
+
+for arg in "${@:2}"; do
+	key=$(tokenizeKey "$arg") || exit $?
+	value=$(tokenizeValue "$arg") || exit $?
+	updateConfigValue $filePath $key "$value"
+done
+
+relativePath=`realpath --relative-to="." "$filePath"` || echo "Need realpath command. Install or change script" && exit -1
+
+git add "$relativePath"
+echo "updating config $fileName ${@:2}"
+		
