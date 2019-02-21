@@ -68,11 +68,12 @@ validateKeyValuePairs "${@:2}"
 for arg in "${@:2}"; do
 	key=$(tokenizeKey "$arg") || exit $?
 	value=$(tokenizeValue "$arg") || exit $?
-	updateConfigValue $filePath $key "$value"
+	updateConfigValue "$filePath" "$key" "$value"
 done
 
-relativePath=`realpath --relative-to="." "$filePath"` || echo "Need realpath command. Install or change script" && exit -1
+relativePath=`realpath --relative-to="." "$filePath"` || exit -1
 
 git add "$relativePath"
-echo "updating config $fileName ${@:2}"
-		
+commitMsg="updating config $fileName ${@:2}"
+git commit -m"$commitMsg"
+git push	
