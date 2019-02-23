@@ -1,0 +1,71 @@
+#!/bin/bash
+
+SENDER_NAME=""
+SENDER_ADDR=""
+RECEIVER_ADDR="$SENDER_ADDR"
+
+GREP_THIS_IN_LOG="^Epoch "
+CMD_GET_EPOCH_NUM='awk '"'"'{print $2}'"'"' | tr -d ":"'
+LOG_FILE_PATH="test.log"
+
+SLEEP_TIME_MINS=20
+
+TRIGGER_NOTIFICATION_AT_EPOCH_MULTIPLE=50
+MAX_EPOCH=200
+
+function sendMail() {
+	local body="$1"
+	local subject="[Experiment Notification] Epoch $epochNum reached for Experiment $expName" 
+	echo "$body" | mail -s "$subject" -aFrom:"$SENDER_NAME"\<"$SENDER_ADDR"\> "$RECEIVER_ADDR"
+}
+
+function testsendMail() {
+ echo $1
+}
+
+function runGrepEveryNMins() {
+	local filePath="$2"
+	local mins="$1"
+	local secs=$(($mins * 60))
+	local nextNotification=$TRIGGER_NOTIFICATION_AT_EPOCH_MULTIPLE
+	local epochNum=0
+	while (( $epochNum <= $MAX_EPOCH )); do
+		sleep 1
+		local line=$(egrep -I "$GREP_THIS_IN_LOG" "$filePath" | tail -1) || exit -1
+		cmd="echo $line | $CMD_GET_EPOCH_NUM"
+		epochNum=`eval $cmd` || exit -1
+		if [ -z $epochNum ]; then
+			epochNum=0
+		fi
+		if (( $epochNum >= $nextNotification ));then
+			nextNotification=$((nextNotification + $TRIGGER_NOTIFICATION_AT_EPOCH_MULTIPLE))
+			testsendMail "Epoch $epochNum reached"
+		fi
+			
+	done
+}
+
+function post_hook() {
+	runGrepEveryNMins $SLEEP_TIME_MINS "$LOG_FILE_PATH" "$@"
+}
+
+function pre_hook() {
+	#Can possibly call cfgdit here to update the parameters before kicking off experiment.
+	#but that qould require more changes. later TODO
+	local a=1
+}
+
+function execute() {
+	#Command to execute experiment goes here
+	#Must make the experiment go to background. We don't want to block our shell/script here.
+	#Must proceed onto post_hook to kick off monitoring
+
+	#nohup python startDummyExperiment.py &> "$logFileName" &
+	#expPID="$!" #makes a global variable to store PID of your experiment process.
+	echo "asdasd" >/dev/null
+}
+
+pre_hook "$@"
+execute "$@"
+post_hook "$@"
+#wait $expPID
